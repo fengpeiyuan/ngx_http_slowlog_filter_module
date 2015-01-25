@@ -21,11 +21,6 @@ Synopsis
 ========
 
 ```nginx
-
- # set the Server output header
- more_set_headers 'Server: my-server';
-
- # set and clear output headers
  location /bar {
 	slowlog on; 
 	slowlog_log_slower_than 10000; 
