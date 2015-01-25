@@ -1,7 +1,3 @@
-=========================================================================================================================
-``slowlog module`` - one of nginx real-time monitor module to record queries which exceeded a specified execution time.
-=========================================================================================================================
-
 = Name =
 
 '''ngx_http_slowlog_filter_module''' - a nginx filter module, which accumulate request' time span between now and start_time(start_sec and start_msec in the ngx_http_request_t struct) by filte http header and records in memory.
