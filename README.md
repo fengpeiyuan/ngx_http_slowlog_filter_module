@@ -1,8 +1,3 @@
-==================
-``slowlog module`` 
-==================
-one of nginx real-time monitor module to record queries which exceeded a specified execution time.
-
 Name
 ====
 
