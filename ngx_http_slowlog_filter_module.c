@@ -21,8 +21,8 @@ typedef struct {
 	ngx_uint_t latency;
 	ngx_uint_t latency_slower_than;
 	ngx_uint_t latency_diff;
-	ngx_str_t *uri;
-    ngx_str_t url;
+	u_char *uri;
+	u_char *args;
     ngx_str_t addr;
 } ngx_http_slowlog_queue_ele_t;
 
@@ -181,6 +181,7 @@ static ngx_int_t ngx_http_slowlog_header_filter(ngx_http_request_t *r)
         		ngx_queue_t *qlast = ngx_queue_last(main_conf->queue_container);
         		ngx_http_slowlog_queue_ele_t *qele_last = ngx_get_struct_from_member(qlast,ngx_http_slowlog_queue_ele_t,queue_ele);
         		ngx_queue_remove(qlast);
+        		//TODO pfree qele_last->url
         		ngx_pfree(main_conf->pool,qele_last);
 
         	}
@@ -189,7 +190,12 @@ static ngx_int_t ngx_http_slowlog_header_filter(ngx_http_request_t *r)
         	qele->latency = latency_msec;
         	qele->latency_slower_than = loc_conf->slowlog_log_slower_than;
         	qele->latency_diff = latency_msec - loc_conf->slowlog_log_slower_than;
-        	qele->uri = &r->uri;
+
+        	qele->uri = ngx_pcalloc(main_conf->pool, r->uri.len);
+        	ngx_memcpy(qele->uri,r->uri.data,r->uri.len);
+
+        	qele->args = ngx_pcalloc(main_conf->pool, r->args.len);
+        	ngx_memcpy(qele->args,r->args.data,r->args.len);
         					//TODO add others
 
         	ngx_queue_insert_tail(main_conf->queue_container,&qele->queue_ele);
@@ -257,7 +263,7 @@ static ngx_int_t ngx_http_slowlog_get_handler(ngx_http_request_t *r)
 	{
 		ngx_http_slowlog_queue_ele_t *node = ngx_queue_data(q,ngx_http_slowlog_queue_ele_t,queue_ele);
 
-		size_t size_tmp = sizeof(node->latency)+sizeof(*(node->uri))+sizeof("\r\n");
+		size_t size_tmp = sizeof(node->latency)+sizeof(" ")+sizeof(*(node->uri))+sizeof("?")+sizeof(*(node->args))+sizeof("\r\n");
 		ngx_buf_t *b_tmp = ngx_create_temp_buf(r->pool,size_tmp);
 		ngx_chain_t *out_tmp = ngx_alloc_chain_link(r->pool);
 		if(b_tmp == NULL || out_tmp == NULL)
@@ -267,7 +273,7 @@ static ngx_int_t ngx_http_slowlog_get_handler(ngx_http_request_t *r)
 		out_tmp->buf = b_tmp;
 		out_tmp->next = NULL;
 
-		b_tmp->last = ngx_sprintf(b_tmp->last,"%d %s\r\n",node->latency,node->uri->data);
+		b_tmp->last = ngx_sprintf(b_tmp->last,"%ui %s?%s\r\n",node->latency,node->uri,node->args);
 		b_tmp->last_buf = 1;
 
 		out_mid->next->next = out_tmp;
