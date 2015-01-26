@@ -6,7 +6,7 @@ ngx_http_slowlog_filter_module
 Description
 ===========
 
-**ngx_http_slowlog_filter_module** - a nginx filter module, which accumulate request' time span between now and start_time(start_sec and start_msec in the ngx_http_request_t struct) by filte http header and records in memory
+**ngx_http_slowlog_filter_module** - one of nginx real-time monitor module to record queries which exceeded a specified execution time. 
 
 
 *This module is not distributed with the Nginx source.* See [the installation instructions](#installation).
@@ -20,32 +20,30 @@ This document describes ngx_http_slowlog_filter_module released on 25 January 20
 Synopsis
 ========
 
+This module is a nginx filter module, which accumulate request' time span between now and start_time(start_sec and start_msec in the struct ngx_http_request_t) by http header filter and records in memory. The execution time does not include I/O operations like talking with client and sending the reply.
+You can config bellow.
 ```nginx
- location /bar {
+ location /foo {
+	#mark to monitor this location
 	slowlog on; 
-	slowlog_log_slower_than 10000; 
+	#request' execution time(in microseconds) more than 1000ms will be marked
+	slowlog_log_slower_than 1000;
+	#the lengh of max slowlog
 	slowlog_max_len 10;
  }
 
+ location /bar {
+	#fetch results
+	slowlog_get;
+	#access/deny maybe used
+	#deny  192.168.1.1;
+	#allow 192.168.1.0/24;
+	#allow 10.1.1.0/16;
+	#allow 2001:0db8::/32;
+	#deny  all;
+ }
+
 ```
-
-
-
-Directives
-==========
-
-slowlog
-----------------
-**syntax:** *slowlog on/off*
-
-**default:** *off*
-
-**context:** *http, server, location*
-
-**phase:** *output-header-filter*
-
-
-[Back to TOC](#table-of-contents)
 
 Limitations
 ===========
@@ -94,23 +92,6 @@ Earlier versions of Nginx like 0.6.x and 0.5.x will *not* work.
 
 If you find that any particular version of Nginx above 0.7.44 does not work with this module, please consider [reporting a bug](#report-bugs).
 
-[Back to TOC](#table-of-contents)
-
-
-TODO
-====
-
-* Support variables in new headers' keys.
-
-[Back to TOC](#table-of-contents)
-
-Getting involved
-================
-
-You'll be very welcomed to submit patches to the [author](#author) or just ask for a commit bit to the [source repository](#source-repository) on GitHub.
-
-[Back to TOC](#table-of-contents)
-
 Authors
 =======
 
@@ -118,16 +99,12 @@ Authors
 
 This wiki page is also maintained by the author himself, and everybody is encouraged to improve this page as well.
 
-[Back to TOC](#table-of-contents)
-
 Copyright & License
 ===================
 
-Copyright (c) 2009-2014, Peiyuan Feng <fengpeiyuan@gmail.com>.
-
+Copyright (c) 2014-2015, Peiyuan Feng <fengpeiyuan@gmail.com>.
 
 This module is licensed under the terms of the BSD license.
-
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions
 are met:
@@ -146,6 +123,3 @@ PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
 LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-[Back to TOC](#table-of-contents)
-
