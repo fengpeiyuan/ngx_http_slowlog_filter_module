@@ -152,36 +152,38 @@ static ngx_int_t node_comparer(const ngx_queue_t* a,const ngx_queue_t* b)
 static ngx_int_t ngx_http_slowlog_header_filter(ngx_http_request_t *r)
 {
     struct timeval tv;
-    ngx_http_slowlog_loc_conf_t *loc_conf;
     ngx_uint_t now_sec;
     ngx_uint_t req_sec;
     ngx_uint_t now_msec;
     ngx_uint_t req_msec;
     ngx_uint_t latency_msec;
-    loc_conf = ngx_http_get_module_loc_conf(r, ngx_http_slowlog_filter_module);
-    if (loc_conf->slowlog == 1)
+    ngx_gettimeofday(&tv);
+    now_sec = tv.tv_sec;
+    now_msec = tv.tv_usec / 1000;
+    req_sec = r->start_sec;
+    req_msec = r->start_msec;
+    latency_msec = ((now_sec * 1000) + now_msec) - ((req_sec * 1000) + req_msec);
+
+    ngx_http_slowlog_loc_conf_t *loc_conf = ngx_http_get_module_loc_conf(r, ngx_http_slowlog_filter_module);
+
+    if (loc_conf->slowlog == 1 && latency_msec >= loc_conf->slowlog_log_slower_than)
     {
-        ngx_gettimeofday(&tv);
-        now_sec = tv.tv_sec;
-        now_msec = tv.tv_usec / 1000;
-        req_sec = r->start_sec;
-        req_msec = r->start_msec;
-        latency_msec = ((now_sec * 1000) + now_msec) - ((req_sec * 1000) + req_msec);
-        if ( latency_msec >= loc_conf->slowlog_log_slower_than)
-        {
         	ngx_http_slowlog_main_conf_t *main_conf = ngx_http_get_module_main_conf(r,ngx_http_slowlog_filter_module);
         	if(main_conf->queue_container == NULL)
         	{
         		ngx_log_error(NGX_LOG_ERR,r->connection->log,0,"# ngx_http_slowlog_header_filter # queue_container is NULL");
         		return ngx_http_next_header_filter(r);
         	}
-        	if(loc_conf->slowlog_curr_len >= loc_conf->slowlog_max_len+1)
+
+        	if(loc_conf->slowlog_curr_len >= loc_conf->slowlog_max_len)
         	{
         		ngx_queue_sort(main_conf->queue_container, node_comparer);
         		ngx_queue_t *qlast = ngx_queue_last(main_conf->queue_container);
         		ngx_http_slowlog_queue_ele_t *qele_last = ngx_get_struct_from_member(qlast,ngx_http_slowlog_queue_ele_t,queue_ele);
         		ngx_queue_remove(qlast);
-        		//TODO pfree qele_last->url
+        		ngx_pfree(main_conf->pool,qele_last->uri);
+        		ngx_pfree(main_conf->pool,qele_last->args);
+        		ngx_pfree(main_conf->pool,qele_last->addr);
         		ngx_pfree(main_conf->pool,qele_last);
 
         	}
@@ -199,15 +201,12 @@ static ngx_int_t ngx_http_slowlog_header_filter(ngx_http_request_t *r)
 
         	qele->addr = ngx_pcalloc(main_conf->pool,r->connection->addr_text.len);
         	ngx_memcpy(qele->addr,r->connection->addr_text.data,r->connection->addr_text.len);
-        					//TODO add others
 
         	ngx_queue_insert_tail(main_conf->queue_container,&qele->queue_ele);
         	ngx_atomic_fetch_add(&loc_conf->slowlog_curr_len,1);
 
-        }
-
-
     }
+
     return ngx_http_next_header_filter(r);
 }
 
@@ -245,7 +244,7 @@ static ngx_int_t ngx_http_slowlog_get_handler(ngx_http_request_t *r)
 
 	ngx_http_slowlog_main_conf_t *main_conf = ngx_http_get_module_main_conf(r,ngx_http_slowlog_filter_module);
 
-	size_t size = sizeof("latency(ms)     addr(ip)          url\r\n------------------------------------\r\n");
+	size_t size = sizeof("latency(ms)     client addr(ip)     url\r\n------------------------------------\r\n");
 	ngx_buf_t *b = ngx_create_temp_buf(r->pool,size);
 	ngx_chain_t *out = ngx_alloc_chain_link(r->pool);
 	if(b == NULL || out == NULL)
@@ -254,20 +253,18 @@ static ngx_int_t ngx_http_slowlog_get_handler(ngx_http_request_t *r)
 	}
 	out->buf = b;
 	out->next = NULL;
-	b->last = ngx_sprintf(b->last,"latency(ms)     addr(ip)          url\r\n------------------------------------\r\n");
+	b->last = ngx_sprintf(b->last,"latency(ms)     client addr(ip)     url\r\n------------------------------------\r\n");
 	b->last_buf = 1;
 
 	ngx_chain_t *out_mid = ngx_alloc_chain_link(r->pool);
 	out_mid->next = out;
 
-	ngx_int_t c = 0;
 	ngx_queue_t *q;
 	for(q = ngx_queue_head(main_conf->queue_container);q!=ngx_queue_sentinel(main_conf->queue_container);q=ngx_queue_next(q))
 	{
 		ngx_http_slowlog_queue_ele_t *node = ngx_queue_data(q,ngx_http_slowlog_queue_ele_t,queue_ele);
 
 		size_t size_tmp = sizeof(node->latency)+sizeof("               ")+sizeof(node->addr)*ngx_strlen(node->addr)+sizeof("          ")+sizeof(node->uri)*ngx_strlen(node->uri)+sizeof("?")+sizeof(node->args)*ngx_strlen(node->args)+sizeof("\r\n");
-		//ngx_log_error(NGX_LOG_ERR,r->connection->log,0,"# ngx_http_slowlog_header_filter # size_tmp:%d,%d,%d,%d,%d,%d,%d,%d",sizeof(node->latency),sizeof(" "),sizeof(node->addr)*ngx_strlen(node->addr),sizeof(" "),sizeof(node->uri)*ngx_strlen(node->uri),sizeof("?"),sizeof(node->args)*ngx_strlen(node->args),sizeof("\r\n"));
 		ngx_buf_t *b_tmp = ngx_create_temp_buf(r->pool,size_tmp);
 		ngx_chain_t *out_tmp = ngx_alloc_chain_link(r->pool);
 		if(b_tmp == NULL || out_tmp == NULL)
@@ -286,8 +283,6 @@ static ngx_int_t ngx_http_slowlog_get_handler(ngx_http_request_t *r)
 		out_mid->next->next = out_tmp;
 		out_mid->next = out_tmp;
 
-		c++;
-		if(c>100) break;
 	}
 
 	r->headers_out.status = NGX_HTTP_OK;
