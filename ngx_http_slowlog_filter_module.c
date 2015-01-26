@@ -23,7 +23,7 @@ typedef struct {
 	ngx_uint_t latency_diff;
 	u_char *uri;
 	u_char *args;
-    ngx_str_t addr;
+    u_char *addr;
 } ngx_http_slowlog_queue_ele_t;
 
 static ngx_http_output_header_filter_pt ngx_http_next_header_filter;
@@ -196,6 +196,9 @@ static ngx_int_t ngx_http_slowlog_header_filter(ngx_http_request_t *r)
 
         	qele->args = ngx_pcalloc(main_conf->pool, r->args.len);
         	ngx_memcpy(qele->args,r->args.data,r->args.len);
+
+        	qele->addr = ngx_pcalloc(main_conf->pool,r->connection->addr_text.len);
+        	ngx_memcpy(qele->addr,r->connection->addr_text.data,r->connection->addr_text.len);
         					//TODO add others
 
         	ngx_queue_insert_tail(main_conf->queue_container,&qele->queue_ele);
@@ -242,7 +245,7 @@ static ngx_int_t ngx_http_slowlog_get_handler(ngx_http_request_t *r)
 
 	ngx_http_slowlog_main_conf_t *main_conf = ngx_http_get_module_main_conf(r,ngx_http_slowlog_filter_module);
 
-	size_t size = sizeof("slowlogs list:\r\n");
+	size_t size = sizeof("latency(ms)     addr(ip)          url\r\n------------------------------------\r\n");
 	ngx_buf_t *b = ngx_create_temp_buf(r->pool,size);
 	ngx_chain_t *out = ngx_alloc_chain_link(r->pool);
 	if(b == NULL || out == NULL)
@@ -251,7 +254,7 @@ static ngx_int_t ngx_http_slowlog_get_handler(ngx_http_request_t *r)
 	}
 	out->buf = b;
 	out->next = NULL;
-	b->last = ngx_sprintf(b->last,"slowlogs list:\r\n");
+	b->last = ngx_sprintf(b->last,"latency(ms)     addr(ip)          url\r\n------------------------------------\r\n");
 	b->last_buf = 1;
 
 	ngx_chain_t *out_mid = ngx_alloc_chain_link(r->pool);
@@ -263,7 +266,8 @@ static ngx_int_t ngx_http_slowlog_get_handler(ngx_http_request_t *r)
 	{
 		ngx_http_slowlog_queue_ele_t *node = ngx_queue_data(q,ngx_http_slowlog_queue_ele_t,queue_ele);
 
-		size_t size_tmp = sizeof(node->latency)+sizeof(" ")+sizeof(*(node->uri))+sizeof("?")+sizeof(*(node->args))+sizeof("\r\n");
+		size_t size_tmp = sizeof(node->latency)+sizeof("               ")+sizeof(node->addr)*ngx_strlen(node->addr)+sizeof("          ")+sizeof(node->uri)*ngx_strlen(node->uri)+sizeof("?")+sizeof(node->args)*ngx_strlen(node->args)+sizeof("\r\n");
+		//ngx_log_error(NGX_LOG_ERR,r->connection->log,0,"# ngx_http_slowlog_header_filter # size_tmp:%d,%d,%d,%d,%d,%d,%d,%d",sizeof(node->latency),sizeof(" "),sizeof(node->addr)*ngx_strlen(node->addr),sizeof(" "),sizeof(node->uri)*ngx_strlen(node->uri),sizeof("?"),sizeof(node->args)*ngx_strlen(node->args),sizeof("\r\n"));
 		ngx_buf_t *b_tmp = ngx_create_temp_buf(r->pool,size_tmp);
 		ngx_chain_t *out_tmp = ngx_alloc_chain_link(r->pool);
 		if(b_tmp == NULL || out_tmp == NULL)
@@ -273,7 +277,10 @@ static ngx_int_t ngx_http_slowlog_get_handler(ngx_http_request_t *r)
 		out_tmp->buf = b_tmp;
 		out_tmp->next = NULL;
 
-		b_tmp->last = ngx_sprintf(b_tmp->last,"%ui %s?%s\r\n",node->latency,node->uri,node->args);
+		if(ngx_strlen(node->args)==0)
+			b_tmp->last = ngx_sprintf(b_tmp->last,"%ui               %s          %s %s\r\n",node->latency,node->addr,node->uri,node->args);
+		else
+			b_tmp->last = ngx_sprintf(b_tmp->last,"%ui               %s          %s?%s\r\n",node->latency,node->addr,node->uri,node->args);
 		b_tmp->last_buf = 1;
 
 		out_mid->next->next = out_tmp;
