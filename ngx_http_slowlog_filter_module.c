@@ -4,19 +4,22 @@
 
 #define ngx_get_struct_from_member(ptr, type, member) ((type *)((char *)(ptr)-(unsigned long)(&((type *)0)->member)))
 
-typedef struct {
+typedef struct
+{
 	ngx_queue_t	*queue_container;
 	ngx_pool_t *pool;
 } ngx_http_slowlog_main_conf_t;
 
-typedef struct {
+typedef struct
+{
     ngx_msec_t slowlog_log_slower_than;
     ngx_flag_t slowlog;
     ngx_uint_t slowlog_max_len;
     ngx_atomic_t slowlog_curr_len;
 } ngx_http_slowlog_loc_conf_t;
 
-typedef struct {
+typedef struct
+{
 	ngx_queue_t queue_ele;
 	ngx_uint_t latency;
 	ngx_uint_t latency_slower_than;
@@ -39,7 +42,7 @@ static ngx_int_t ngx_http_slowlog_get_handler(ngx_http_request_t *r);
 static ngx_command_t ngx_http_slowlog_filter_commands[] = {
     {
       ngx_string("slowlog"),
-      NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
       ngx_conf_set_flag_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_slowlog_loc_conf_t, slowlog),
@@ -55,7 +58,7 @@ static ngx_command_t ngx_http_slowlog_filter_commands[] = {
     },
     {
       ngx_string("slowlog_max_len"),
-      NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
       ngx_conf_set_num_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_slowlog_loc_conf_t, slowlog_max_len),
@@ -102,7 +105,8 @@ static void *ngx_http_slowlog_create_main_conf(ngx_conf_t *cf)
 {
     ngx_http_slowlog_main_conf_t  *main_conf;
     main_conf = ngx_pcalloc(cf->pool, sizeof(ngx_http_slowlog_main_conf_t));
-    if (main_conf == NULL) {
+    if (main_conf == NULL)
+    {
         return NGX_CONF_ERROR;
     }
 
@@ -117,7 +121,8 @@ static void *ngx_http_slowlog_create_loc_conf(ngx_conf_t *cf)
 {
     ngx_http_slowlog_loc_conf_t  *loc_conf;
     loc_conf = ngx_pcalloc(cf->pool, sizeof(ngx_http_slowlog_loc_conf_t));
-    if (loc_conf == NULL) {
+    if (loc_conf == NULL)
+    {
         return NGX_CONF_ERROR;
     }
 

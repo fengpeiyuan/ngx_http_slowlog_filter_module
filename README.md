@@ -71,27 +71,6 @@ the version 1.7.7 (see [nginx compatibility](#compatibility)), and then build th
 
 Download the latest version of the release tarball of this module
 
-Compatibility
-=============
-
-The following versions of Nginx should work with this module:
-
-* **1.7.x**                       (last tested: 1.7.7)
-* **1.6.x**                       (last tested: 1.6.2)
-* **1.5.x**                       (last tested: 1.5.8)
-* **1.4.x**                       (last tested: 1.4.4)
-* **1.3.x**                       (last tested: 1.3.7)
-* **1.2.x**                       (last tested: 1.2.9)
-* **1.1.x**                       (last tested: 1.1.5)
-* **1.0.x**                       (last tested: 1.0.11)
-* **0.9.x**                       (last tested: 0.9.4)
-* **0.8.x**                       (last tested: 0.8.54)
-* **0.7.x >= 0.7.44**             (last tested: 0.7.68)
-
-Earlier versions of Nginx like 0.6.x and 0.5.x will *not* work.
-
-If you find that any particular version of Nginx above 0.7.44 does not work with this module, please consider [reporting a bug](#report-bugs).
-
 Authors
 =======
 
