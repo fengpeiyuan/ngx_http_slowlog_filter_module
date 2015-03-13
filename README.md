@@ -1,7 +1,9 @@
 Name
 ====
 
-ngx_http_slowlog_filter_module
+**ngx_http_slowlog_filter_module**
+
+This project is still experimental and under early development.
 
 Description
 ===========
