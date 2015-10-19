@@ -22,28 +22,30 @@ This document describes ngx_http_slowlog_filter_module released on 25 January 20
 Synopsis
 ========
 
-This module is a nginx filter module, which accumulate request' time span between now and start_time(start_sec and start_msec in the struct ngx_http_request_t) by http header filter and records in memory. The execution time does not include I/O operations like talking with client and sending the reply.
+This module is a nginx filter module, which accumulate request' time span between now and start_time(start_sec and start_msec in the struct ngx_http_request_t) by http header filter and records in each process memory. The execution time does not include I/O operations like talking with client and sending the reply.
 You can config bellow.
 ```nginx
- location /foo {
+ http {
+	...
 	#mark to monitor this location
 	slowlog on; 
 	#request' execution time(in microseconds) more than 1000ms will be marked
-	slowlog_log_slower_than 1000;
+	slowlog_slower_than 1000;
 	#the lengh of max slowlog
 	slowlog_max_len 10;
- }
+	... 
 
- location /bar {
-	#fetch results
-	slowlog_get;
-	#access/deny maybe used
-	#deny  192.168.1.1;
-	#allow 192.168.1.0/24;
-	#allow 10.1.1.0/16;
-	#allow 2001:0db8::/32;
-	#deny  all;
- }
+	#check result in this location
+	location /sloglogget {
+		#fetch results
+		slowlog_get;
+		#access/deny maybe used
+		#deny  192.168.1.1;
+		#allow 192.168.1.0/24;
+		#allow 10.1.1.0/16;
+		#allow 2001:0db8::/32;
+		#deny  all;
+	 }
 
 ```
 
@@ -55,7 +57,7 @@ Installation
 ============
 
 Grab the nginx source code from [nginx.org](http://nginx.org/), for example,
-the version 1.7.7 (see [nginx compatibility](#compatibility)), and then build the source with this module:
+the version 1.7.7, and then build the source with this module:
 
 ```bash
 
